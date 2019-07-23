@@ -1,4 +1,4 @@
-package org.yuequan.jpa.soft.delete;
+package pl.powermilk.jpa.soft.delete;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;

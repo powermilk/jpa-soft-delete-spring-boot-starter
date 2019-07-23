@@ -1,7 +1,8 @@
-package org.yuequan.jpa.soft.delete.mock.entity;
+package pl.powermilk.jpa.soft.delete.mock.entity;
 
 import javax.persistence.*;
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.Date;
 
 @Entity
@@ -15,7 +16,7 @@ public class User {
     private String password;
 
     @Column(name = "removed_at")
-    private Date removedAt;
+    private LocalDateTime removedAt;
 
     public Integer getId() {
         return id;
@@ -49,11 +50,11 @@ public class User {
         this.password = password;
     }
 
-    public Date getRemovedAt() {
+    public LocalDateTime getRemovedAt() {
         return removedAt;
     }
 
-    public void setRemovedAt(Date removedAt) {
+    public void setRemovedAt(LocalDateTime removedAt) {
         this.removedAt = removedAt;
     }
 }

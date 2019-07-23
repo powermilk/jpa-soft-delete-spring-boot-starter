@@ -1,6 +1,5 @@
-package org.yuequan.jpa.soft.delete.repository.support;
+package pl.powermilk.jpa.soft.delete.repository.support;
 
-import org.springframework.data.jpa.repository.support.JpaRepositoryFactory;
 import org.springframework.data.jpa.repository.support.JpaRepositoryFactoryBean;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.core.support.RepositoryFactorySupport;

@@ -1,10 +1,8 @@
-package org.yuequan.jpa.soft.delete;
+package pl.powermilk.jpa.soft.delete;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.yuequan.jpa.soft.delete.repository.EnableJpaSoftDeleteRepositories;
-import org.yuequan.jpa.soft.delete.repository.support.JpaSoftDeleteRepository;
+import pl.powermilk.jpa.soft.delete.repository.EnableJpaSoftDeleteRepositories;
 
 @SpringBootApplication
 @EnableJpaSoftDeleteRepositories

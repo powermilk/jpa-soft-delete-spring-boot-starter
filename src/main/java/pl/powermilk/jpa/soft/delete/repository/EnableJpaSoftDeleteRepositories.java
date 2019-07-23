@@ -1,4 +1,4 @@
-package org.yuequan.jpa.soft.delete.repository;
+package pl.powermilk.jpa.soft.delete.repository;
 
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.context.annotation.ComponentScan;
@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.support.JpaRepositoryFactoryBean;
 import org.springframework.data.repository.config.DefaultRepositoryBaseClass;
 import org.springframework.data.repository.query.QueryLookupStrategy;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.yuequan.jpa.soft.delete.repository.support.JpaSoftDeleteRepositoryFactoryBean;
+import pl.powermilk.jpa.soft.delete.repository.support.JpaSoftDeleteRepositoryFactoryBean;
 
 import javax.persistence.EntityManagerFactory;
 import java.lang.annotation.*;

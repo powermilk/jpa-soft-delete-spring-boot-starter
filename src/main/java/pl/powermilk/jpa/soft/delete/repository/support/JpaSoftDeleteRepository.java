@@ -1,26 +1,15 @@
-package org.yuequan.jpa.soft.delete.repository.support;
+package pl.powermilk.jpa.soft.delete.repository.support;
 
-import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.data.domain.Example;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.data.jpa.domain.Specifications;
-import org.springframework.data.jpa.provider.PersistenceProvider;
-import org.springframework.data.jpa.repository.query.QueryUtils;
 import org.springframework.data.jpa.repository.support.CrudMethodMetadata;
 import org.springframework.data.jpa.repository.support.JpaEntityInformation;
-import org.springframework.data.jpa.repository.support.JpaEntityInformationSupport;
 import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
-import org.springframework.lang.Nullable;
-import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
-import org.yuequan.jpa.soft.delete.repository.SoftDelete;
+import pl.powermilk.jpa.soft.delete.repository.SoftDelete;
 
 import javax.persistence.EntityManager;
-import javax.persistence.LockModeType;
 import javax.persistence.Query;
 import javax.persistence.TypedQuery;
 import javax.persistence.criteria.*;
@@ -29,14 +18,14 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.*;
 
-import static org.springframework.data.jpa.repository.query.QueryUtils.DELETE_ALL_QUERY_STRING;
-import static org.springframework.data.jpa.repository.query.QueryUtils.applyAndBind;
 import static org.springframework.data.jpa.repository.query.QueryUtils.getQueryString;
-
 
 /**
  * Soft Delete override of the {@link SimpleJpaRepository} class.
+ *
  * @author yuequan
+ * @author powermilk
+ *
  * @param <T> the type of the entity to handle
  * @param <ID> the type of the entity's identifier
  * @see org.springframework.data.jpa.repository.support.SimpleJpaRepository
@@ -44,78 +33,64 @@ import static org.springframework.data.jpa.repository.query.QueryUtils.getQueryS
 @SoftDelete
 public class JpaSoftDeleteRepository<T,ID extends Serializable> extends SimpleJpaRepository<T,ID> {
 
-    private static final String ID_MUST_NOT_BE_NULL = "The given id must not be null!";
-    private static final String SOFT_DELETE_FLAG_COLUMN = "removed_at";
     private static final String SOFT_DELETE_FLAG_PROPERTIES = "removedAt";
 
     private final JpaEntityInformation<T, ?> entityInformation;
     private final EntityManager em;
-    private final PersistenceProvider provider;
 
-    private @Nullable
-    CrudMethodMetadata metadata;
     /**
      * Creates a new {@link SimpleJpaRepository} to manage objects of the given {@link JpaEntityInformation}.
      *
      * @param entityInformation must not be {@literal null}.
-     * @param entityManager must not be {@literal null}.
+     * @param entityManager     must not be {@literal null}.
      */
-    public JpaSoftDeleteRepository(JpaEntityInformation<T, ?> entityInformation, EntityManager entityManager) {
+    private JpaSoftDeleteRepository(JpaEntityInformation<T, ?> entityInformation, EntityManager entityManager) {
         super(entityInformation, entityManager);
         this.entityInformation = entityInformation;
         this.em = entityManager;
-        this.provider = PersistenceProvider.fromEntityManager(entityManager);
-    }
-    /**
-     * Creates a new {@link SimpleJpaRepository} to manage objects of the given domain type.
-     *
-     * @param domainClass must not be {@literal null}.
-     * @param em must not be {@literal null}.
-     */
-    public JpaSoftDeleteRepository(Class<T> domainClass, EntityManager em) {
-        this(JpaEntityInformationSupport.getEntityInformation(domainClass, em), em);
     }
 
     @Override
     public void setRepositoryMethodMetadata(CrudMethodMetadata crudMethodMetadata) {
         super.setRepositoryMethodMetadata(crudMethodMetadata);
-        this.metadata = crudMethodMetadata;
     }
 
-    private String getDeleteAllQueryString(){
-        StringBuilder softDeleteAllQueryBuilder = new StringBuilder();
-        softDeleteAllQueryBuilder.append("UPDATE %s x ");
-        softDeleteAllQueryBuilder.append("SET ");
-        softDeleteAllQueryBuilder.append(SOFT_DELETE_FLAG_PROPERTIES);
-        softDeleteAllQueryBuilder.append("=");
-        softDeleteAllQueryBuilder.append(" :");
-        softDeleteAllQueryBuilder.append(SOFT_DELETE_FLAG_PROPERTIES);
-        String softDeleteAllQueryString = softDeleteAllQueryBuilder.toString();
+    private String getDeleteAllQueryString() {
+        String softDeleteAllQueryString = "UPDATE %s x " +
+                "SET " +
+                SOFT_DELETE_FLAG_PROPERTIES +
+                "=" +
+                " :" +
+                SOFT_DELETE_FLAG_PROPERTIES;
         return getQueryString(softDeleteAllQueryString, entityInformation.getEntityName());
     }
 
     /**
+     * Function for soft delete.
      *
-     * @param entity
+     * Method are updating column in entity.
+     *
+     * @param entity Entity to soft delete.
      */
     @Override
     @Transactional
     public void delete(T entity) {
         Assert.notNull(entity, "The given entity must not be null!");
+
         CriteriaBuilder criteriaBuilder = em.getCriteriaBuilder();
         CriteriaUpdate<T> updater = criteriaBuilder.createCriteriaUpdate(getDomainClass());
         Root<T> root = updater.from(getDomainClass());
-        updater.set(SOFT_DELETE_FLAG_PROPERTIES, new Date());
+        updater.set(SOFT_DELETE_FLAG_PROPERTIES, LocalDateTime.now());
+
         final List<Predicate> predicates = new ArrayList<>();
-        if(entityInformation.hasCompositeId()){
-            entityInformation.getIdAttributeNames().forEach(idName -> {
-                predicates.add(criteriaBuilder.equal(root.get(idName),
-                        entityInformation.getCompositeIdAttributeValue(entityInformation.getId(entity), idName)));
-            });
-            updater.where(criteriaBuilder.and(predicates.toArray(new Predicate[predicates.size()])));
-        }else{
-            updater.where(criteriaBuilder.equal(root.get(entityInformation.getIdAttribute().getName()), entityInformation.getId(entity)));
+        if (entityInformation.hasCompositeId()) {
+            entityInformation.getIdAttributeNames().forEach(idName -> predicates.add(criteriaBuilder.equal(root.get(idName),
+                    entityInformation.getCompositeIdAttributeValue(entityInformation.getId(entity), idName))));
+            updater.where(criteriaBuilder.and(predicates.toArray(new Predicate[0])));
+        } else {
+            updater.where(criteriaBuilder.equal(root.get(Objects.requireNonNull(entityInformation.getIdAttribute()).getName()), entityInformation.getId(entity)));
         }
+
         em.createQuery(updater).executeUpdate();
     }
 
@@ -127,31 +102,25 @@ public class JpaSoftDeleteRepository<T,ID extends Serializable> extends SimpleJp
         if (!entities.iterator().hasNext()) {
             return;
         }
-        StringBuilder whereBuilder = new StringBuilder(getDeleteAllQueryString());
 
-        Iterator<T> iterator = entities.iterator();
-        int i = 0;
+        Query query = em.createQuery(getDeleteAllQueryString() + " where x in (:entities)");
 
-        whereBuilder.append(" where x in (:entities)");
-
-        Query query = em.createQuery(whereBuilder.toString());
-
-       query.setParameter(SOFT_DELETE_FLAG_PROPERTIES, new Date());
-       query.setParameter("entities", entities);
-       query.executeUpdate();
+        query.setParameter(SOFT_DELETE_FLAG_PROPERTIES, LocalDateTime.now());
+        query.setParameter("entities", entities);
+        query.executeUpdate();
     }
 
     @Override
     @Transactional
     public void deleteAllInBatch() {
         em.createQuery(getDeleteAllQueryString())
-                .setParameter(SOFT_DELETE_FLAG_PROPERTIES, new Date())
+                .setParameter(SOFT_DELETE_FLAG_PROPERTIES, LocalDateTime.now())
                 .executeUpdate();
     }
 
     @Override
     public Optional<T> findById(ID id) {
-       return super.findOne(Specification.where(new ByIdSpecification<T,ID>(id,entityInformation)));
+        return super.findOne(Specification.where(new ByIdSpecification<>(id, entityInformation)));
     }
 
     @Override
@@ -159,11 +128,11 @@ public class JpaSoftDeleteRepository<T,ID extends Serializable> extends SimpleJp
         return super.getCountQuery(spec != null ? spec.and(new DeletedSpecification<>()) : new DeletedSpecification<>(), domainClass);
     }
 
-    private static final class ByIdSpecification<T,ID extends Serializable> implements Specification<T>{
+    private static final class ByIdSpecification<T, ID extends Serializable> implements Specification<T> {
         private final ID id;
         private final JpaEntityInformation<T, ?> information;
 
-        public ByIdSpecification(ID id, JpaEntityInformation<T, ?> information) {
+        ByIdSpecification(ID id, JpaEntityInformation<T, ?> information) {
             this.id = id;
             this.information = information;
         }
@@ -171,31 +140,29 @@ public class JpaSoftDeleteRepository<T,ID extends Serializable> extends SimpleJp
         @Override
         public Predicate toPredicate(Root<T> root, CriteriaQuery<?> query, CriteriaBuilder criteriaBuilder) {
             final List<Predicate> predicates = new ArrayList<>();
-            if(information.hasCompositeId()){
+
+            if (information.hasCompositeId()) {
                 information.getIdAttributeNames().forEach(name ->
                         predicates.add(criteriaBuilder.equal(root.get(name), information.getCompositeIdAttributeValue(id, name))));
-                return criteriaBuilder.and(predicates.toArray(new Predicate[predicates.size()]));
+                return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
             }
-            return criteriaBuilder.equal(root.get(information.getIdAttribute().getName()), id);
+
+            return criteriaBuilder.equal(root.get(Objects.requireNonNull(information.getIdAttribute()).getName()), id);
         }
     }
 
-    private static final class DeletedSpecification<T> implements Specification<T>{
+    private static final class DeletedSpecification<T> implements Specification<T> {
         private boolean isDeleted;
 
-        public DeletedSpecification(boolean isDeleted) {
-            this.isDeleted = isDeleted;
-        }
-
-        public DeletedSpecification() {
+        DeletedSpecification() {
             this.isDeleted = false;
         }
 
         @Override
         public Predicate toPredicate(Root<T> root, CriteriaQuery<?> query, CriteriaBuilder criteriaBuilder) {
-            if(isDeleted){
+            if (isDeleted) {
                 return criteriaBuilder.isNotNull(root.get(SOFT_DELETE_FLAG_PROPERTIES));
-            }else{
+            } else {
                 return criteriaBuilder.isNull(root.get(SOFT_DELETE_FLAG_PROPERTIES));
             }
         }

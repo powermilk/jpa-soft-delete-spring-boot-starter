@@ -1,6 +1,4 @@
-package org.yuequan.jpa.soft.delete.repository;
-
-import org.springframework.beans.factory.annotation.Qualifier;
+package pl.powermilk.jpa.soft.delete.repository;
 
 import java.lang.annotation.*;
 
